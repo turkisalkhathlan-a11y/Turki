@@ -75,14 +75,34 @@ function isNameWord(word: string): boolean {
 // Name connectors
 const NAME_CONNECTOR_SET = new Set(['بن', 'بنت', 'ابن', 'ابنة', 'آل'])
 
+// Honorific titles that should NOT be removed with the name
+const HONORIFIC_TITLES = new Set([
+  'الأستاذ', 'الأستاذة', 'الشيخ', 'فضيلة', 'سماحة', 'معالي',
+  'سعادة', 'الدكتور', 'الدكتورة', 'المهندس', 'المهندسة',
+  'الأمير', 'الأميرة', 'صاحب', 'صاحبة',
+])
+
 // Extract a person name starting at a given position in a line
-function extractNameFromPosition(line: string, startIdx: number): string | null {
+// Returns { name, actualStart } where actualStart accounts for skipped honorifics
+function extractNameFromPosition(line: string, startIdx: number): { name: string; offset: number } | null {
   const rest = line.substring(startIdx).trim()
   const words = rest.split(/\s+/)
 
+  // Skip leading honorific titles (they should stay in the text)
+  let skipCount = 0
+  let skippedLength = 0
+  for (let i = 0; i < words.length; i++) {
+    if (HONORIFIC_TITLES.has(words[i])) {
+      skippedLength += words[i].length + 1 // +1 for space
+      skipCount++
+    } else {
+      break
+    }
+  }
+
   const nameParts: string[] = []
 
-  for (let i = 0; i < words.length && i < 10; i++) {
+  for (let i = skipCount; i < words.length && i < skipCount + 8; i++) {
     const word = words[i]
 
     // Name connectors are always okay
@@ -109,7 +129,7 @@ function extractNameFromPosition(line: string, startIdx: number): string | null 
 
   if (nameParts.length < 2) return null
 
-  return nameParts.join(' ')
+  return { name: nameParts.join(' '), offset: skippedLength }
 }
 
 // Legal role prefixes that precede person names
@@ -177,15 +197,15 @@ function findNames(text: string): RedactedEntity[] {
         const skipMatch = afterPrefixStr.match(/^[\s/:]*/)
         const nameStartInLine = afterPrefix + (skipMatch ? skipMatch[0].length : 0)
 
-        const name = extractNameFromPosition(line, nameStartInLine)
-        if (name) {
-          const nameActualStart = line.indexOf(name, nameStartInLine)
+        const result = extractNameFromPosition(line, nameStartInLine)
+        if (result) {
+          const nameActualStart = line.indexOf(result.name, nameStartInLine + result.offset)
           if (nameActualStart >= 0) {
             entities.push({
               type: 'اسم شخص',
-              original: name,
+              original: result.name,
               start: offset + nameActualStart,
-              end: offset + nameActualStart + name.length,
+              end: offset + nameActualStart + result.name.length,
               replacement: '[اسم شخص]',
             })
           }
@@ -206,21 +226,24 @@ function findNames(text: string): RedactedEntity[] {
         i + 1 < words.length &&
         NAME_CONNECTOR_SET.has(words[i + 1])
       ) {
-        const name = extractNameFromPosition(line, wordPos)
-        if (name) {
-          const nameStart = offset + wordPos
-          // Check we haven't already captured this exact span
-          const alreadyCaptured = entities.some(
-            e => e.start === nameStart && e.end === nameStart + name.length
-          )
-          if (!alreadyCaptured) {
-            entities.push({
-              type: 'اسم شخص',
-              original: name,
-              start: nameStart,
-              end: nameStart + name.length,
-              replacement: '[اسم شخص]',
-            })
+        const result = extractNameFromPosition(line, wordPos)
+        if (result) {
+          const nameActualStart = line.indexOf(result.name, wordPos + result.offset)
+          if (nameActualStart >= 0) {
+            const nameStart = offset + nameActualStart
+            // Check we haven't already captured this exact span
+            const alreadyCaptured = entities.some(
+              e => e.start === nameStart && e.end === nameStart + result.name.length
+            )
+            if (!alreadyCaptured) {
+              entities.push({
+                type: 'اسم شخص',
+                original: result.name,
+                start: nameStart,
+                end: nameStart + result.name.length,
+                replacement: '[اسم شخص]',
+              })
+            }
           }
         }
       }

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import {
   redactDocument,
   RedactionResult,
   RedactionOptions,
   defaultRedactionOptions,
+  RedactedEntity,
   SAMPLE_LEGAL_TEXT,
   EntityType,
 } from '@/lib/redactionEngine'
@@ -44,24 +45,33 @@ const OPTION_LABELS: { key: keyof RedactionOptions; label: string; type: EntityT
   { key: 'redactPassports', label: 'جوازات السفر', type: 'رقم جواز سفر' },
 ]
 
-type TabType = 'input' | 'result' | 'report'
+// Steps: input → review → final
+type Step = 'input' | 'review' | 'final'
 
 export default function RedactPage() {
   const [inputText, setInputText] = useState('')
   const [result, setResult] = useState<RedactionResult | null>(null)
   const [options, setOptions] = useState<RedactionOptions>(defaultRedactionOptions)
-  const [activeTab, setActiveTab] = useState<TabType>('input')
+  const [step, setStep] = useState<Step>('input')
   const [isProcessing, setIsProcessing] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Track which entities are approved (true) or rejected (false)
+  const [entityDecisions, setEntityDecisions] = useState<Record<number, boolean>>({})
 
   const handleRedact = useCallback(() => {
     if (!inputText.trim()) return
     setIsProcessing(true)
-    // Small delay for UX feedback
     setTimeout(() => {
       const redactionResult = redactDocument(inputText, options)
       setResult(redactionResult)
-      setActiveTab('result')
+      // Default: all entities approved
+      const decisions: Record<number, boolean> = {}
+      redactionResult.entities.forEach((_, i) => {
+        decisions[i] = true
+      })
+      setEntityDecisions(decisions)
+      setStep('review')
       setIsProcessing(false)
     }, 300)
   }, [inputText, options])
@@ -69,29 +79,82 @@ export default function RedactPage() {
   const handleLoadSample = () => {
     setInputText(SAMPLE_LEGAL_TEXT)
     setResult(null)
-    setActiveTab('input')
+    setStep('input')
   }
 
   const handleClear = () => {
     setInputText('')
     setResult(null)
-    setActiveTab('input')
+    setEntityDecisions({})
+    setStep('input')
   }
 
-  const handleCopyRedacted = async () => {
-    if (!result) return
-    await navigator.clipboard.writeText(result.redactedText)
+  const handleBackToInput = () => {
+    setStep('input')
+  }
+
+  const handleBackToReview = () => {
+    setStep('review')
+  }
+
+  // Generate the final text based on approved/rejected decisions
+  const finalText = useMemo(() => {
+    if (!result) return ''
+
+    // Get only approved entities
+    const approved = result.entities
+      .map((entity, i) => ({ entity, approved: entityDecisions[i] !== false }))
+      .filter(x => x.approved)
+      .map(x => x.entity)
+
+    // Sort by position descending for safe replacement
+    const sorted = [...approved].sort((a, b) => b.start - a.start)
+
+    let text = inputText
+    for (const entity of sorted) {
+      text =
+        text.substring(0, entity.start) +
+        entity.replacement +
+        text.substring(entity.end)
+    }
+    return text
+  }, [result, entityDecisions, inputText])
+
+  const handleConfirmReview = () => {
+    setStep('final')
+  }
+
+  const handleCopyFinal = async () => {
+    await navigator.clipboard.writeText(finalText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const toggleEntity = (index: number) => {
+    setEntityDecisions(prev => ({ ...prev, [index]: !prev[index] }))
+  }
+
+  const approveAll = () => {
+    if (!result) return
+    const decisions: Record<number, boolean> = {}
+    result.entities.forEach((_, i) => { decisions[i] = true })
+    setEntityDecisions(decisions)
+  }
+
+  const rejectAll = () => {
+    if (!result) return
+    const decisions: Record<number, boolean> = {}
+    result.entities.forEach((_, i) => { decisions[i] = false })
+    setEntityDecisions(decisions)
   }
 
   const toggleOption = (key: keyof RedactionOptions) => {
     setOptions(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const totalEntities = result
-    ? Object.values(result.stats).reduce((a, b) => a + b, 0)
-    : 0
+  const approvedCount = Object.values(entityDecisions).filter(v => v).length
+  const rejectedCount = Object.values(entityDecisions).filter(v => !v).length
+  const totalEntities = result ? result.entities.length : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white" dir="rtl">
@@ -117,131 +180,94 @@ export default function RedactPage() {
               <p className="text-sm text-gray-500">إزالة البيانات الشخصية تلقائياً</p>
             </div>
           </div>
+
+          {/* Progress Steps */}
+          <div className="hidden md:flex items-center gap-2">
+            {[
+              { id: 'input' as Step, label: 'إدخال النص', num: '1' },
+              { id: 'review' as Step, label: 'مراجعة التعديلات', num: '2' },
+              { id: 'final' as Step, label: 'النص النهائي', num: '3' },
+            ].map((s, i) => (
+              <div key={s.id} className="flex items-center gap-2">
+                {i > 0 && <div className={`w-8 h-0.5 ${step === s.id || (s.id === 'final' && step === 'final') || (s.id === 'review' && step !== 'input') ? 'bg-red-400' : 'bg-gray-300'}`} />}
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                  step === s.id
+                    ? 'bg-red-600 text-white'
+                    : (step === 'final' && s.id !== 'final') || (step === 'review' && s.id === 'input')
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-gray-100 text-gray-500'
+                }`}>
+                  <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">
+                    {(step === 'final' && s.id !== 'final') || (step === 'review' && s.id === 'input')
+                      ? <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      : s.num
+                    }
+                  </span>
+                  {s.label}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Options */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-md p-5 sticky top-6">
-              <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                خيارات التنقيح
-              </h2>
-
-              <div className="space-y-3">
-                {OPTION_LABELS.map(({ key, label, type }) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-3 cursor-pointer group"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={options[key]}
-                      onChange={() => toggleOption(key)}
-                      className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                    />
-                    <span className="text-sm text-gray-700 group-hover:text-gray-900 flex items-center gap-1">
-                      <span>{ENTITY_ICONS[type]}</span>
-                      {label}
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              <hr className="my-4" />
-
-              <div className="space-y-2">
-                <button
-                  onClick={handleLoadSample}
-                  className="w-full text-sm px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  تحميل نص تجريبي
-                </button>
-                <button
-                  onClick={handleClear}
-                  className="w-full text-sm px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  مسح الكل
-                </button>
-              </div>
-
-              {/* Stats */}
-              {result && totalEntities > 0 && (
-                <>
-                  <hr className="my-4" />
-                  <h3 className="font-bold text-gray-800 mb-3 text-sm">ملخص التنقيح</h3>
-                  <div className="space-y-2">
-                    {Object.entries(result.stats).map(([type, count]) => {
-                      if (count === 0) return null
-                      const colors = ENTITY_COLORS[type as EntityType]
-                      return (
-                        <div
-                          key={type}
-                          className={`flex items-center justify-between text-xs px-3 py-2 rounded-lg border ${colors}`}
-                        >
-                          <span className="flex items-center gap-1">
-                            <span>{ENTITY_ICONS[type as EntityType]}</span>
-                            {type}
-                          </span>
-                          <span className="font-bold">{count}</span>
-                        </div>
-                      )
-                    })}
-                    <div className="flex items-center justify-between text-sm px-3 py-2 bg-gray-800 text-white rounded-lg font-bold">
-                      <span>الإجمالي</span>
-                      <span>{totalEntities}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {/* Tabs */}
-            <div className="flex gap-1 mb-4 bg-white rounded-xl shadow-sm p-1">
-              {[
-                { id: 'input' as TabType, label: 'النص الأصلي', icon: '📝' },
-                { id: 'result' as TabType, label: 'النص المنقح', icon: '🔒' },
-                { id: 'report' as TabType, label: 'تقرير التنقيح', icon: '📊' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-red-600 text-white shadow-md'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="ml-1">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Input Tab */}
-            {activeTab === 'input' && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    الصق نص الحكم القضائي هنا
-                  </label>
-                  <textarea
-                    value={inputText}
-                    onChange={e => setInputText(e.target.value)}
-                    placeholder="الصق نص الحكم القضائي المراد تنقيحه هنا..."
-                    className="w-full h-96 p-4 border border-gray-300 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none font-mono"
-                    dir="rtl"
-                  />
+        {/* ================================ */}
+        {/* STEP 1: INPUT */}
+        {/* ================================ */}
+        {step === 'input' && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl shadow-md p-5 sticky top-6">
+                <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  خيارات التنقيح
+                </h2>
+                <div className="space-y-3">
+                  {OPTION_LABELS.map(({ key, label, type }) => (
+                    <label key={key} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={options[key]}
+                        onChange={() => toggleOption(key)}
+                        className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 flex items-center gap-1">
+                        <span>{ENTITY_ICONS[type]}</span>
+                        {label}
+                      </span>
+                    </label>
+                  ))}
                 </div>
+                <hr className="my-4" />
+                <div className="space-y-2">
+                  <button onClick={handleLoadSample} className="w-full text-sm px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    تحميل نص تجريبي
+                  </button>
+                  <button onClick={handleClear} className="w-full text-sm px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    مسح الكل
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                <div className="flex items-center justify-between">
+            {/* Input area */}
+            <div className="lg:col-span-3">
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الصق نص الحكم القضائي هنا
+                </label>
+                <textarea
+                  value={inputText}
+                  onChange={e => setInputText(e.target.value)}
+                  placeholder="الصق نص الحكم القضائي المراد تنقيحه هنا..."
+                  className="w-full h-96 p-4 border border-gray-300 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                  dir="rtl"
+                />
+                <div className="flex items-center justify-between mt-4">
                   <span className="text-sm text-gray-500">
                     {inputText.length > 0 ? `${inputText.length} حرف` : 'لم يتم إدخال نص'}
                   </span>
@@ -256,128 +282,296 @@ export default function RedactPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        جاري التنقيح...
+                        جاري الفحص...
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        تنقيح النص
+                        فحص وكشف البيانات الشخصية
                       </>
                     )}
                   </button>
                 </div>
               </div>
-            )}
+            </div>
+          </div>
+        )}
 
-            {/* Result Tab */}
-            {activeTab === 'result' && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                {result ? (
-                  <>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-gray-800">النص بعد التنقيح</h3>
-                      <button
-                        onClick={handleCopyRedacted}
-                        className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-                      >
-                        {copied ? (
-                          <>
-                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            تم النسخ
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            نسخ النص المنقح
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 whitespace-pre-wrap text-sm leading-relaxed font-mono max-h-[600px] overflow-y-auto">
-                      <RedactedTextDisplay text={result.redactedText} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-20 text-gray-400">
-                    <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p>أدخل نصاً في التبويب الأول ثم اضغط &ldquo;تنقيح النص&rdquo;</p>
+        {/* ================================ */}
+        {/* STEP 2: REVIEW */}
+        {/* ================================ */}
+        {step === 'review' && result && (
+          <div className="space-y-6">
+            {/* Review Header */}
+            <div className="bg-white rounded-xl shadow-md p-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">مراجعة البيانات المكتشفة</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    راجع كل عنصر واختر الموافقة على حذفه أو رفض الحذف وإبقائه
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="flex items-center gap-1 text-green-700">
+                      <span className="w-3 h-3 rounded-full bg-green-500" />
+                      موافق: {approvedCount}
+                    </span>
+                    <span className="flex items-center gap-1 text-red-700">
+                      <span className="w-3 h-3 rounded-full bg-red-500" />
+                      مرفوض: {rejectedCount}
+                    </span>
                   </div>
-                )}
+                </div>
+              </div>
+
+              {/* Bulk actions */}
+              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                <button onClick={approveAll} className="px-4 py-2 text-xs bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
+                  موافقة على الكل
+                </button>
+                <button onClick={rejectAll} className="px-4 py-2 text-xs bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors">
+                  رفض الكل
+                </button>
+              </div>
+            </div>
+
+            {/* Entity Review Cards */}
+            <div className="space-y-3">
+              {result.entities.map((entity, i) => (
+                <EntityReviewCard
+                  key={i}
+                  index={i}
+                  entity={entity}
+                  approved={entityDecisions[i] !== false}
+                  originalText={inputText}
+                  onToggle={() => toggleEntity(i)}
+                />
+              ))}
+            </div>
+
+            {/* Review Actions */}
+            <div className="bg-white rounded-xl shadow-md p-5 flex items-center justify-between sticky bottom-4">
+              <button
+                onClick={handleBackToInput}
+                className="px-6 py-3 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+                رجوع للنص
+              </button>
+              <div className="text-center">
+                <span className="text-sm text-gray-500">
+                  {approvedCount} تعديل سيُطبّق من أصل {totalEntities}
+                </span>
+              </div>
+              <button
+                onClick={handleConfirmReview}
+                className="px-8 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center gap-2 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                اعتماد وعرض النص النهائي
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================================ */}
+        {/* STEP 3: FINAL TEXT */}
+        {/* ================================ */}
+        {step === 'final' && result && (
+          <div className="space-y-6">
+            {/* Stats bar */}
+            <div className="bg-white rounded-xl shadow-md p-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    النص النهائي المنقح
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    تم تطبيق {approvedCount} تعديل — تم رفض {rejectedCount} تعديل
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleBackToReview}
+                    className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    رجوع للمراجعة
+                  </button>
+                  <button
+                    onClick={handleCopyFinal}
+                    className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    {copied ? (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        تم النسخ!
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        نسخ النص النهائي
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary stats */}
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
+                {result && Object.entries(result.stats).map(([type, count]) => {
+                  if (count === 0) return null
+                  // Count how many of this type were approved
+                  const approvedOfType = result.entities.filter(
+                    (e, i) => e.type === type && entityDecisions[i] !== false
+                  ).length
+                  return (
+                    <span key={type} className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border ${ENTITY_COLORS[type as EntityType]}`}>
+                      {ENTITY_ICONS[type as EntityType]} {type}: {approvedOfType}/{count}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Final text display */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="p-5 bg-gray-50 rounded-xl border border-gray-200 whitespace-pre-wrap text-sm leading-loose max-h-[700px] overflow-y-auto">
+                <RedactedTextDisplay text={finalText} />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleClear}
+                className="px-6 py-3 text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                بدء تنقيح جديد
+              </button>
+              <button
+                onClick={handleCopyFinal}
+                className="px-8 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                نسخ النص النهائي
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ==============================
+// Entity Review Card
+// ==============================
+
+function EntityReviewCard({
+  index,
+  entity,
+  approved,
+  originalText,
+  onToggle,
+}: {
+  index: number
+  entity: RedactedEntity
+  approved: boolean
+  originalText: string
+  onToggle: () => void
+}) {
+  // Show surrounding context from the original text
+  const contextBefore = originalText.substring(Math.max(0, entity.start - 40), entity.start)
+  const contextAfter = originalText.substring(entity.end, Math.min(originalText.length, entity.end + 40))
+
+  const colors = ENTITY_COLORS[entity.type]
+
+  return (
+    <div className={`bg-white rounded-xl shadow-sm border-2 transition-all ${
+      approved ? 'border-green-200' : 'border-red-200'
+    }`}>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          {/* Entity info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-gray-400 font-mono">#{index + 1}</span>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colors}`}>
+                {ENTITY_ICONS[entity.type]} {entity.type}
+              </span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                approved
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {approved ? 'سيُحذف' : 'سيبقى'}
+              </span>
+            </div>
+
+            {/* Context preview */}
+            <div className="text-sm leading-relaxed bg-gray-50 rounded-lg p-3 font-mono" dir="rtl">
+              <span className="text-gray-500">...{contextBefore}</span>
+              <span className={`px-1 py-0.5 rounded font-bold ${
+                approved
+                  ? 'bg-red-200 text-red-900 line-through'
+                  : 'bg-yellow-100 text-yellow-900'
+              }`}>
+                {entity.original}
+              </span>
+              <span className="text-gray-500">{contextAfter}...</span>
+            </div>
+
+            {approved && (
+              <div className="text-xs text-gray-500 mt-2">
+                سيُستبدل بـ: <span className="font-mono bg-green-50 text-green-700 px-1.5 py-0.5 rounded">{entity.replacement}</span>
               </div>
             )}
+          </div>
 
-            {/* Report Tab */}
-            {activeTab === 'report' && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                {result && result.entities.length > 0 ? (
-                  <>
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="font-bold text-gray-800">تقرير البيانات المكتشفة</h3>
-                      <span className="text-sm text-gray-500">
-                        تم اكتشاف {totalEntities} عنصر شخصي
-                      </span>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-200">
-                            <th className="text-right py-3 px-4 font-medium text-gray-600">#</th>
-                            <th className="text-right py-3 px-4 font-medium text-gray-600">النوع</th>
-                            <th className="text-right py-3 px-4 font-medium text-gray-600">القيمة الأصلية</th>
-                            <th className="text-right py-3 px-4 font-medium text-gray-600">الاستبدال</th>
-                            <th className="text-right py-3 px-4 font-medium text-gray-600">الموقع</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {result.entities.map((entity, i) => (
-                            <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="py-3 px-4 text-gray-500">{i + 1}</td>
-                              <td className="py-3 px-4">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${ENTITY_COLORS[entity.type]}`}>
-                                  {ENTITY_ICONS[entity.type]} {entity.type}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 font-mono text-red-600 bg-red-50 rounded">
-                                {entity.original}
-                              </td>
-                              <td className="py-3 px-4 font-mono text-green-700 bg-green-50 rounded">
-                                {entity.replacement}
-                              </td>
-                              <td className="py-3 px-4 text-gray-500 text-xs">
-                                حرف {entity.start}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                ) : result && result.entities.length === 0 ? (
-                  <div className="text-center py-20 text-gray-400">
-                    <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p>لم يتم اكتشاف أي بيانات شخصية في النص</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-20 text-gray-400">
-                    <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p>قم بتنقيح النص أولاً لعرض التقرير</p>
-                  </div>
-                )}
-              </div>
-            )}
+          {/* Approve / Reject buttons */}
+          <div className="flex flex-col gap-2 shrink-0">
+            <button
+              onClick={onToggle}
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                approved
+                  ? 'bg-green-600 text-white shadow-md'
+                  : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              حذف
+            </button>
+            <button
+              onClick={onToggle}
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                !approved
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              إبقاء
+            </button>
           </div>
         </div>
       </div>
@@ -385,17 +579,17 @@ export default function RedactPage() {
   )
 }
 
-// Component to highlight redacted portions in the text
-function RedactedTextDisplay({ text }: { text: string }) {
-  // Split on redaction markers like [اسم شخص], [رقم هوية], etc.
-  const parts = text.split(/(\[[^\]]+\])/)
+// ==============================
+// Highlighted Text Display
+// ==============================
 
+function RedactedTextDisplay({ text }: { text: string }) {
+  const parts = text.split(/(\[[^\]]+\])/)
   const entityTypes = Object.keys(ENTITY_COLORS)
 
   return (
     <>
       {parts.map((part, i) => {
-        // Check if this part is a redaction marker
         const inner = part.startsWith('[') && part.endsWith(']')
           ? part.slice(1, -1)
           : null
