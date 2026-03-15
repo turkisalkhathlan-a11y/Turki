@@ -3,57 +3,11 @@ import Link from 'next/link'
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-b from-slate-50 to-white">
-      <div className="text-center max-w-2xl">
+      <div className="text-center max-w-3xl">
         <div className="mb-8">
-          <div className="w-24 h-24 mx-auto bg-primary-600 rounded-full flex items-center justify-center mb-6">
+          <div className="w-24 h-24 mx-auto bg-amber-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
             <svg
               className="w-12 h-12 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
-              />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            المستشار القانوني
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            مساعدك الذكي للإجابة على جميع استفساراتك القانونية
-          </p>
-        </div>
-
-        <div className="space-y-4 flex flex-col items-center">
-          <Link
-            href="/chat"
-            className="inline-flex items-center justify-center gap-2 bg-primary-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-primary-700 transition-colors shadow-lg hover:shadow-xl"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-            ابدأ المحادثة
-          </Link>
-          <Link
-            href="/validator"
-            className="inline-flex items-center justify-center gap-2 bg-amber-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-amber-700 transition-colors shadow-lg hover:shadow-xl"
-          >
-            <svg
-              className="w-6 h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -65,53 +19,40 @@ export default function Home() {
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
+          </div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-4">
             المفتش القضائي
-          </Link>
-          <Link
-            href="/redact"
-            className="inline-flex items-center justify-center gap-2 bg-red-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-              />
-            </svg>
-            تنقيح الأحكام القضائية
-          </Link>
-          <Link
-            href="/learn"
-            className="inline-flex items-center justify-center gap-2 bg-emerald-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-emerald-700 transition-colors shadow-lg hover:shadow-xl"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
-            تعلّم الإنجليزية
-          </Link>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8">
+            اكتشف أخطاء الصكوك القضائية وفقاً لمحددات مضبوطة
+          </p>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-right">
+        <Link
+          href="/validator"
+          className="inline-flex items-center justify-center gap-3 bg-amber-600 text-white px-10 py-5 rounded-2xl text-xl font-bold hover:bg-amber-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105"
+        >
+          <svg
+            className="w-7 h-7"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+            />
+          </svg>
+          ابدأ فحص الصك القضائي
+        </Link>
+
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-right">
           <div className="p-6 bg-white rounded-xl shadow-md">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-primary-600"
+                className="w-6 h-6 text-amber-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -120,20 +61,20 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                 />
               </svg>
             </div>
-            <h3 className="font-bold text-gray-800 mb-2">إجابات فورية</h3>
+            <h3 className="font-bold text-gray-800 mb-2">9 محددات فحص</h3>
             <p className="text-gray-600 text-sm">
-              احصل على إجابات سريعة لاستفساراتك القانونية
+              فحص شامل للأركان الشكلية والتسبيب والمنطوق والمصطلحات والمراجع النظامية
             </p>
           </div>
 
           <div className="p-6 bg-white rounded-xl shadow-md">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-primary-600"
+                className="w-6 h-6 text-amber-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -142,20 +83,20 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                 />
               </svg>
             </div>
-            <h3 className="font-bold text-gray-800 mb-2">خصوصية تامة</h3>
+            <h3 className="font-bold text-gray-800 mb-2">ذكاء اصطناعي</h3>
             <p className="text-gray-600 text-sm">
-              محادثاتك سرية ومحمية بالكامل
+              تحليل معمّق بنموذج Claude لاكتشاف الأخطاء السياقية والتناقضات
             </p>
           </div>
 
           <div className="p-6 bg-white rounded-xl shadow-md">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-primary-600"
+                className="w-6 h-6 text-amber-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -164,14 +105,38 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
             </div>
-            <h3 className="font-bold text-gray-800 mb-2">متاح 24/7</h3>
+            <h3 className="font-bold text-gray-800 mb-2">تقرير تفصيلي</h3>
             <p className="text-gray-600 text-sm">
-              خدمة متاحة على مدار الساعة
+              تقرير شامل بدرجة تقييم وتوصيات قابل للطباعة
             </p>
+          </div>
+        </div>
+
+        <div className="mt-12 p-6 bg-amber-50 rounded-2xl border border-amber-200 text-right">
+          <h3 className="font-bold text-amber-800 mb-3">محددات الفحص المضبوطة</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              'الأركان الشكلية',
+              'التاريخ الهجري',
+              'رقم القضية',
+              'بيانات الأطراف',
+              'المصطلحات القانونية',
+              'المراجع النظامية',
+              'وضوح المنطوق',
+              'اللغة الرسمية',
+              'قابلية الاستئناف',
+            ].map(item => (
+              <div key={item} className="flex items-center gap-2 text-sm text-amber-700">
+                <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {item}
+              </div>
+            ))}
           </div>
         </div>
       </div>
