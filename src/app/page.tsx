@@ -49,6 +49,25 @@ export default function Home() {
             ابدأ المحادثة
           </Link>
           <Link
+            href="/validator"
+            className="inline-flex items-center justify-center gap-2 bg-amber-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-amber-700 transition-colors shadow-lg hover:shadow-xl"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            المفتش القضائي
+          </Link>
+          <Link
             href="/redact"
             className="inline-flex items-center justify-center gap-2 bg-red-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl"
           >
