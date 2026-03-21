@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 
 const systemPrompt = `أنت مفتش قضائي متخصص في مراجعة الصكوك القضائية السعودية. مهمتك تحليل الصك القضائي واكتشاف الأخطاء وفقاً للمعايير التالية:
 
@@ -26,6 +27,33 @@ const systemPrompt = `أنت مفتش قضائي متخصص في مراجعة ا
   "recommendations": ["التوصيات"]
 }`
 
+const userPrompt = (text: string) =>
+  `حلّل الصك القضائي التالي واكتشف جميع الأخطاء:\n\n---\n${text}\n---\n\nأعد التحليل بصيغة JSON فقط.`
+
+async function analyzeWithClaude(apiKey: string, text: string) {
+  const client = new Anthropic({ apiKey })
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt(text) }],
+  })
+  return message.content[0].type === 'text' ? message.content[0].text : ''
+}
+
+async function analyzeWithOpenAI(apiKey: string, text: string) {
+  const client = new OpenAI({ apiKey })
+  const completion = await client.chat.completions.create({
+    model: 'gpt-4o',
+    max_tokens: 2048,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt(text) },
+    ],
+  })
+  return completion.choices[0]?.message?.content || ''
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { text } = await request.json()
@@ -37,30 +65,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const anthropicKey = process.env.ANTHROPIC_API_KEY
+    const openaiKey = process.env.OPENAI_API_KEY
 
-    if (!apiKey) {
+    if (!anthropicKey && !openaiKey) {
       return NextResponse.json({
         ai_enabled: false,
-        message: 'التحليل بالذكاء الاصطناعي غير متاح. أضف ANTHROPIC_API_KEY لتفعيله. التحليل القاعدي يعمل بشكل طبيعي.',
+        message:
+          'التحليل بالذكاء الاصطناعي غير متاح. أضف ANTHROPIC_API_KEY أو OPENAI_API_KEY لتفعيله. التحليل القاعدي يعمل بشكل طبيعي.',
       })
     }
 
-    const client = new Anthropic({ apiKey })
+    let responseText: string
+    let provider: string
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      messages: [
-        {
-          role: 'user',
-          content: `حلّل الصك القضائي التالي واكتشف جميع الأخطاء:\n\n---\n${text}\n---\n\nأعد التحليل بصيغة JSON فقط.`,
-        },
-      ],
-      system: systemPrompt,
-    })
-
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    if (anthropicKey) {
+      responseText = await analyzeWithClaude(anthropicKey, text)
+      provider = 'claude'
+    } else {
+      responseText = await analyzeWithOpenAI(openaiKey!, text)
+      provider = 'openai'
+    }
 
     let aiResult
     try {
@@ -72,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ai_enabled: true,
+      provider,
       result: aiResult,
     })
   } catch (error) {
