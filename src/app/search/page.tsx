@@ -124,14 +124,16 @@ export default function SearchPage() {
   }, [])
 
   const popularSearches = [
-    'فصل تعسفي من العمل',
-    'كمبيالة تجارية مستحقة',
-    'تقليد علامة تجارية',
-    'حضانة أطفال بعد الطلاق',
-    'إفلاس تاجر',
-    'تعويض حادث مروري',
-    'احتيال مالي إلكتروني',
-    'أجور متأخرة',
+    'تعويض عن السجن',
+    'توقيف احتياطي غير مشروع',
+    'براءة بعد توقيف',
+    'اتهام كيدي',
+    'إطالة مدة السجن',
+    'المادة 215 إجراءات جزائية',
+    'تعويض معنوي تشوه سمعة',
+    'مبدأ ألف ريال يومياً',
+    'شروط التعويض عن التوقيف',
+    'تقادم دعوى التعويض',
   ]
 
   useEffect(() => {
@@ -156,8 +158,8 @@ export default function SearchPage() {
               </svg>
             </div>
             <div>
-              <h1 className="font-bold text-gray-800 text-base">محرك البحث القانوني الذكي</h1>
-              <p className="text-xs text-gray-500">مبني على بيانات البوابة القضائية العلمية - وزارة العدل السعودية</p>
+              <h1 className="font-bold text-gray-800 text-base">أحكام التعويض ضد النيابة العامة</h1>
+              <p className="text-xs text-gray-500">مبني على بيانات ديوان المظالم والسوابق القضائية - bog.gov.sa</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -176,7 +178,7 @@ export default function SearchPage() {
               {stats.total} حكم قضائي
             </span>
             <a
-              href="https://sjp.moj.gov.sa"
+              href="https://www.bog.gov.sa/scientificcontent/judicialblogs/pages/default.aspx"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden md:inline-flex items-center gap-1.5 text-primary-600 hover:text-primary-700 transition-colors text-xs font-medium bg-primary-50 px-3 py-1.5 rounded-full"
@@ -184,7 +186,7 @@ export default function SearchPage() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              المصدر الرسمي
+              ديوان المظالم
             </a>
           </div>
         </div>
@@ -200,11 +202,11 @@ export default function SearchPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">محرك البحث في الأحكام القضائية</h2>
+              <h2 className="text-4xl font-bold text-gray-800 mb-4">أحكام التعويض ضد النيابة العامة</h2>
               <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed">
-                ابحث بالذكاء الاصطناعي في قاعدة بيانات الأحكام القضائية الصادرة من المحاكم السعودية
+                ابحث بالذكاء الاصطناعي في السوابق القضائية والأحكام الصادرة بالتعويض عن السجن والتوقيف غير المشروع
               </p>
-              <p className="text-sm text-gray-400 mt-2">مصدر البيانات: البوابة القضائية العلمية (sjp.moj.gov.sa) والبوابة القانونية (laws.moj.gov.sa)</p>
+              <p className="text-sm text-gray-400 mt-2">مصدر البيانات: بوابة ديوان المظالم (bog.gov.sa) - المحتوى العلمي والمدونات القضائية</p>
             </div>
           )}
 
@@ -219,7 +221,7 @@ export default function SearchPage() {
                   onChange={(e) => handleQueryChange(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
-                  placeholder="اكتب سؤالك القانوني... (مثال: ما حكم الفصل التعسفي؟)"
+                  placeholder="ابحث في أحكام التعويض... (مثال: تعويض عن توقيف احتياطي)"
                   className="w-full px-5 py-4 pr-12 bg-white border-2 border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all text-base shadow-sm"
                   dir="rtl"
                 />
@@ -350,8 +352,8 @@ export default function SearchPage() {
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
                   <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                 </div>
-                <h4 className="font-bold text-gray-800 text-sm mb-1">بيانات رسمية</h4>
-                <p className="text-xs text-gray-500">مصدر البيانات: البوابة القضائية العلمية والبوابة القانونية لوزارة العدل</p>
+                <h4 className="font-bold text-gray-800 text-sm mb-1">سوابق قضائية موثقة</h4>
+                <p className="text-xs text-gray-500">مصدر البيانات: بوابة ديوان المظالم - المدونات والسوابق القضائية الرسمية</p>
               </div>
               <div className="p-5 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mb-3">
@@ -438,13 +440,13 @@ export default function SearchPage() {
               <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
               </div>
-              <span className="text-xs text-gray-500">محرك البحث القانوني الذكي</span>
+              <span className="text-xs text-gray-500">أحكام التعويض ضد النيابة العامة</span>
             </div>
             <p className="text-xs text-amber-600 text-center max-w-xl">تنبيه: النتائج للاسترشاد فقط ولا تُغني عن استشارة محامٍ مرخص.</p>
             <div className="flex items-center gap-3 text-xs">
-              <a href="https://sjp.moj.gov.sa" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 transition-colors">البوابة القضائية العلمية</a>
+              <a href="https://www.bog.gov.sa/scientificcontent/judicialblogs/pages/default.aspx" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 transition-colors">مدونات ديوان المظالم</a>
               <span className="text-gray-300">|</span>
-              <a href="https://laws.moj.gov.sa/ar" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 transition-colors">البوابة القانونية</a>
+              <a href="https://www.bog.gov.sa/CaseLaw/Pages/SearchCaseLaw.aspx" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 transition-colors">السوابق القضائية</a>
             </div>
           </div>
         </div>

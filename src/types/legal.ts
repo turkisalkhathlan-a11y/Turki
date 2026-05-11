@@ -14,17 +14,32 @@ export interface JudicialDecision {
   legalArticles: string[]
   appealStatus: AppealStatus
   source: string
+  compensationAmount?: string
+  imprisonmentDays?: number
+  dailyRate?: number
+  accusationType?: string
 }
 
 export type CourtType =
+  | 'إدارية'
+  | 'جزائية'
+  | 'استئناف إدارية'
+  | 'المحكمة الإدارية العليا'
+  | 'عامة'
   | 'تجارية'
   | 'عمالية'
-  | 'جزائية'
   | 'أحوال شخصية'
-  | 'عامة'
-  | 'إدارية'
 
 export type CaseCategory =
+  | 'تعويض عن سجن'
+  | 'تعويض عن توقيف'
+  | 'تعويض عن خطأ قضائي'
+  | 'تعويض عن اتهام كيدي'
+  | 'تعويض عن ضرر'
+  | 'إلغاء قرار إداري'
+  | 'تعويضات'
+  | 'جنائي'
+  | 'إداري'
   | 'عقود'
   | 'شركات'
   | 'أوراق تجارية'
@@ -32,10 +47,7 @@ export type CaseCategory =
   | 'منازعات عمالية'
   | 'فصل تعسفي'
   | 'أجور'
-  | 'تعويضات'
   | 'أحوال شخصية'
-  | 'جنائي'
-  | 'إداري'
   | 'عقارات'
   | 'ملكية فكرية'
   | 'تأمين'
